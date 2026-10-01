@@ -5,6 +5,8 @@ import globals from 'globals';
 export default tseslint.config(
   {
     ignores: [
+      // apps/web is linted with its own Next.js config (pnpm --filter @cortinas/web lint)
+      'apps/web/**',
       '**/node_modules/**',
       '**/dist/**',
       '**/coverage/**',
