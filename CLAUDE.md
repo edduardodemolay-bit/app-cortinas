@@ -37,18 +37,29 @@ Plano detalhado, modelo de dados e perguntas abertas: `docs/PLANO.md`.
 
 ## Comandos
 
-_A definir na etapa 2 (setup). Previstos:_
-
 ```
 pnpm install
-pnpm lint
+pnpm check                          # format:check + lint + typecheck + test (rodar antes de commitar)
+pnpm lint                           # ESLint raiz + lint do Next em apps/web
 pnpm typecheck
-pnpm test                       # Vitest em todos os pacotes
-pnpm --filter calc test -- --coverage
-pnpm --filter mobile start      # Expo
-pnpm --filter web dev           # Next.js
+pnpm test                           # Vitest; calc exige 100% de cobertura
+pnpm format
+pnpm --filter @cortinas/mobile start
+pnpm --filter @cortinas/web dev
+pnpm --filter @cortinas/web build
 ```
+
+Dependências do app mobile: usar `npx expo install <pacote>` dentro de `apps/mobile` (resolve versões compatíveis com o SDK).
+
+## Versões e armadilhas
+
+- Expo SDK 57 (RN 0.86), Next.js 16, TypeScript 6.0, ESLint 9, Vitest 5, Zod 4, pnpm 12.
+- **TypeScript fixo em 6.0**: typescript-eslint ainda não suporta TS 7.
+- **ESLint fixo em 9**: eslint-config-next ainda não suporta ESLint 10. `apps/web` usa a própria config do Next; a config raiz ignora `apps/web`.
+- `.npmrc` usa `node-linker=hoisted` (Metro/React Native).
+- Expo e Next mudam muito entre versões: consultar `node_modules/next/dist/docs/` e https://docs.expo.dev/llms.txt em vez de confiar em memória.
+- Pacotes `@cortinas/*` exportam o `src/*.ts` direto (sem build); o Next usa `transpilePackages`.
 
 ## Ambiente (Windows, PowerShell)
 
-Node 24 instalado. Faltam: git, pnpm (via `corepack enable`), Docker (para Supabase local) ou projeto Supabase de desenvolvimento na nuvem.
+Node 24, git e pnpm instalados. Sem Docker: Supabase de desenvolvimento será um projeto na nuvem (URL + anon key em `.env`, ver `.env.example`).
