@@ -1,0 +1,7 @@
+pnpm-lock.yaml
+coverage/
+dist/
+.next/
+.expo/
+supabase/.temp
+prompt-claude-code.md
