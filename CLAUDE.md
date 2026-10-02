@@ -2,7 +2,7 @@
 
 ## Contexto
 
-MVP de app mobile para cortineiros no Brasil (profissionais e pequenas lojas que medem, orçam, fabricam e instalam cortinas e persianas). Concorrente de referência: Decorsoft (ERP web). Diferencial: trabalho em campo, offline, orçamento em menos de 10 minutos pelo celular, fechamento pelo WhatsApp.
+MVP de app web instalável (PWA, uso principal no celular) para cortineiros no Brasil (profissionais e pequenas lojas que medem, orçam, fabricam e instalam cortinas e persianas). Concorrente de referência: Decorsoft (ERP web). Diferencial: trabalho em campo, offline, orçamento em menos de 10 minutos pelo celular, fechamento pelo WhatsApp.
 
 **Fluxo do MVP:** medir → calcular → enviar proposta → cliente aceitar.
 **Critério de pronto:** orçamento real de 3 ambientes em menos de 10 min, sem ajuda, sem internet.
@@ -13,10 +13,10 @@ Plano detalhado, modelo de dados e perguntas abertas: `docs/PLANO.md`.
 
 ## Stack
 
-- `apps/mobile`: Expo + React Native + TypeScript + expo-router. Android prioritário.
-- Offline: expo-sqlite + Drizzle ORM; fila de sync própria (`outbox`). PDF no aparelho via expo-print.
+- `apps/web`: **PWA** com Vite + React + React Router (HashRouter) + Tailwind 4 + vite-plugin-pwa. Um app só: telas do cortineiro e proposta pública (`#/p/<token>`). Android Chrome é o alvo principal.
+- Hospedagem: GitHub Pages, deploy automático pelo GitHub Actions a cada push na `main` (`BASE_PATH=/<repo>/`).
+- Offline: service worker (cache do app) + IndexedDB via Dexie; fila de sync própria (`outbox`). PDF gerado no navegador.
 - Backend: Supabase (Postgres, Auth, Storage, RLS por `company_id`).
-- `apps/web`: Next.js – página pública da proposta (`/p/[token]`) e aceite.
 - `packages/calc`: motor de cálculo em TS puro (sem React, sem banco), Vitest com 100% de cobertura.
 - `packages/shared`: schemas Zod, tipos, formatadores BR.
 - Monorepo com pnpm workspaces. CI no GitHub Actions.
@@ -40,26 +40,22 @@ Plano detalhado, modelo de dados e perguntas abertas: `docs/PLANO.md`.
 ```
 pnpm install
 pnpm check                          # format:check + lint + typecheck + test (rodar antes de commitar)
-pnpm lint                           # ESLint raiz + lint do Next em apps/web
+pnpm lint
 pnpm typecheck
 pnpm test                           # Vitest; calc exige 100% de cobertura
 pnpm format
-pnpm --filter @cortinas/mobile start
-pnpm --filter @cortinas/web dev
-pnpm --filter @cortinas/web build
+pnpm --filter @cortinas/web dev     # http://localhost:5173 (também na rede local, para testar no celular)
+pnpm --filter @cortinas/web build   # gera apps/web/dist (com service worker)
 ```
-
-Dependências do app mobile: usar `npx expo install <pacote>` dentro de `apps/mobile` (resolve versões compatíveis com o SDK).
 
 ## Versões e armadilhas
 
-- Expo SDK 57 (RN 0.86), Next.js 16, TypeScript 6.0, ESLint 9, Vitest 5, Zod 4, pnpm 12.
+- Vite 8, React 19, React Router 8, Tailwind 4, vite-plugin-pwa 1, TypeScript 6.0, ESLint 9, Vitest 5, Zod 4, pnpm 12.
 - **TypeScript fixo em 6.0**: typescript-eslint ainda não suporta TS 7.
-- **ESLint fixo em 9**: eslint-config-next ainda não suporta ESLint 10. `apps/web` usa a própria config do Next; a config raiz ignora `apps/web`.
-- `.npmrc` usa `node-linker=hoisted` (Metro/React Native).
-- Expo e Next mudam muito entre versões: consultar `node_modules/next/dist/docs/` e https://docs.expo.dev/llms.txt em vez de confiar em memória.
-- Pacotes `@cortinas/*` exportam o `src/*.ts` direto (sem build); o Next usa `transpilePackages`.
+- **ESLint em 9** (o ecossistema de plugins ainda não acompanha o 10).
+- **HashRouter** é proposital: GitHub Pages não reescreve rotas de SPA. Links de proposta ficam `…/#/p/<token>`.
+- Pacotes `@cortinas/*` exportam o `src/*.ts` direto (sem build); o Vite transpila.
 
 ## Ambiente (Windows, PowerShell)
 
-Node 24, git e pnpm instalados. Sem Docker: Supabase de desenvolvimento será um projeto na nuvem (URL + anon key em `.env`, ver `.env.example`).
+Node 24, git e pnpm instalados. Sem Docker: Supabase de desenvolvimento será um projeto na nuvem (URL + anon key em `apps/web/.env.local`, ver `.env.example`).

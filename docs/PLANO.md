@@ -1,47 +1,41 @@
 # Plano do MVP – App para Cortineiros
 
-Etapa 1 – proposta para aprovação. Nada de código ainda.
+Aprovado na etapa 1. **Revisado em 02/10/2026:** o app passou de Expo (nativo) para **app web instalável (PWA)** publicado no GitHub Pages, a pedido do usuário, para testar mais rápido pelo celular.
 
-## 1. Decisões de stack (e onde divirjo do prompt)
+## 1. Decisões de stack
 
-| Tema                 | Decisão                                                              | Por quê                                                                                                                                                                                                                                                                                                                                              |
-| -------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Banco local          | **expo-sqlite + Drizzle ORM** + fila de sync própria                 | Drizzle dá schema tipado e migrations no SQLite do Expo, sem plugin nativo extra. WatermelonDB exige configuração nativa própria, o desenvolvimento dele desacelerou e o protocolo de sync dele obriga a escrever endpoints de push/pull do mesmo jeito. **Plano B:** PowerSync (sync Supabase↔SQLite pronto) se a sync própria der trabalho demais. |
-| Medidas              | Guardadas em **milímetros inteiros**                                 | Mesmo princípio do dinheiro em centavos: sem float no banco nem no motor. A interface mostra e aceita cm/m (ex.: "1,85 m" ou "185 cm").                                                                                                                                                                                                              |
-| Percentuais          | **Pontos-base inteiros** (10000 = 100%)                              | Markup e fatores sem float. Fator de franzimento 2,5× = `25000`.                                                                                                                                                                                                                                                                                     |
-| PDF                  | Gerado **no próprio celular** com `expo-print` (HTML → PDF)          | Funciona offline; o cortineiro pode entregar o PDF na hora.                                                                                                                                                                                                                                                                                          |
-| Página pública       | **Next.js** em `apps/web` (deploy na Vercel)                         | Edge Functions do Supabase não servem `text/html` no domínio padrão (o Supabase reescreve para `text/plain`), então não servem para a página do cliente.                                                                                                                                                                                             |
-| Aceite               | Funções Postgres `SECURITY DEFINER` chamadas pela página com o token | Cliente não precisa de login e não enxerga nada além da proposta dele.                                                                                                                                                                                                                                                                               |
-| Snapshot da proposta | Ao enviar, o orçamento é **congelado** em um JSON versionado         | O cliente vê exatamente o que foi enviado, mesmo que o cortineiro edite depois (uma edição gera nova versão).                                                                                                                                                                                                                                        |
-| IDs                  | **UUID gerado no aparelho**                                          | Necessário para criar registros offline sem colisão.                                                                                                                                                                                                                                                                                                 |
-| Número do orçamento  | Atribuído pelo servidor na primeira sincronização                    | Numeração sequencial por empresa não dá para garantir offline. Até sincronizar, aparece como "Rascunho". Enviar link exige internet de qualquer forma.                                                                                                                                                                                               |
+| Tema                 | Decisão                                                              | Por quê                                                                                                                                                                                                                 |
+| -------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| App                  | **PWA: Vite + React + React Router + Tailwind**, um app só           | Abre por link, instala na tela inicial, atualiza sozinho a cada push. Android Chrome cobre offline, câmera, compartilhar e (no futuro) Web Bluetooth para trena. Custo: no iPhone o offline/instalação é mais limitado. |
+| Hospedagem           | **GitHub Pages**, deploy pelo GitHub Actions                         | Grátis e automático. Rotas com `#/` (HashRouter) porque o Pages não reescreve URLs de SPA.                                                                                                                              |
+| Offline              | **Service worker** (vite-plugin-pwa) + **IndexedDB via Dexie**       | O app inteiro fica em cache; os dados ficam no IndexedDB do navegador, com fila de sincronização própria (`outbox`). Plano B: PowerSync.                                                                                |
+| Medidas              | Guardadas em **milímetros inteiros**                                 | Mesmo princípio do dinheiro em centavos: sem float no banco nem no motor. A interface mostra e aceita cm/m (ex.: "1,85 m" ou "185 cm").                                                                                 |
+| Percentuais          | **Pontos-base inteiros** (10000 = 100%)                              | Markup e fatores sem float. Fator de franzimento 2,5× = `25000`.                                                                                                                                                        |
+| PDF                  | Gerado **no próprio aparelho** (no navegador)                        | Funciona offline. Biblioteca escolhida na etapa 7.                                                                                                                                                                      |
+| Página pública       | Rota `#/p/<token>` **no mesmo app**                                  | Um deploy só. O cliente abre o link do WhatsApp e vê a proposta sem login.                                                                                                                                              |
+| Aceite               | Funções Postgres `SECURITY DEFINER` chamadas pela página com o token | Cliente não precisa de login e não enxerga nada além da proposta dele.                                                                                                                                                  |
+| Snapshot da proposta | Ao enviar, o orçamento é **congelado** em um JSON versionado         | O cliente vê exatamente o que foi enviado, mesmo que o cortineiro edite depois (uma edição gera nova versão).                                                                                                           |
+| IDs                  | **UUID gerado no aparelho**                                          | Necessário para criar registros offline sem colisão.                                                                                                                                                                    |
+| Número do orçamento  | Atribuído pelo servidor na primeira sincronização                    | Numeração sequencial por empresa não dá para garantir offline. Até sincronizar, aparece como "Rascunho". Enviar link exige internet de qualquer forma.                                                                  |
 
-Resto do stack conforme o prompt: Expo + expo-router + TypeScript, Supabase (Postgres, Auth, Storage, RLS), pnpm workspaces, Vitest, Zod.
+Resto do stack conforme o prompt: TypeScript, Supabase (Postgres, Auth, Storage, RLS), pnpm workspaces, Vitest, Zod.
+
+**Por que não fecha portas:** motor de cálculo e tipos são TS puro em `packages/`. Se um dia precisar de app nativo (Expo/Capacitor), eles são reaproveitados sem mudança.
 
 ## 2. Estrutura de pastas
 
 ```
 app-cortinas/
 ├─ apps/
-│  ├─ mobile/                    # Expo (Android prioridade)
-│  │  ├─ app/                    # rotas expo-router
-│  │  │  ├─ (auth)/login.tsx, cadastro.tsx
-│  │  │  └─ (app)/
-│  │  │     ├─ orcamentos/index.tsx          # lista
-│  │  │     ├─ orcamentos/[id]/index.tsx     # resumo com totais
-│  │  │     ├─ orcamentos/[id]/cliente.tsx
-│  │  │     ├─ orcamentos/[id]/ambientes/[roomId].tsx
-│  │  │     ├─ orcamentos/[id]/itens/[itemId].tsx   # medição + produto
-│  │  │     ├─ clientes/…
-│  │  │     └─ ajustes/ (empresa, precos, markup)
-│  │  └─ src/
-│  │     ├─ db/                  # schema Drizzle, migrations SQLite, repositórios
-│  │     ├─ sync/                # outbox, push/pull, upload de fotos
-│  │     ├─ features/            # lógica por domínio (quotes, customers, pricing…)
-│  │     ├─ pdf/                 # template HTML da proposta
-│  │     └─ ui/                  # componentes grandes p/ campo (MeasureInput, BigButton…)
-│  └─ web/                       # Next.js – proposta pública
-│     └─ app/p/[token]/page.tsx
+│  └─ web/                       # PWA (Vite + React) – app do cortineiro + proposta pública
+│     ├─ public/                 # ícones, manifest
+│     └─ src/
+│        ├─ routes/              # telas: Home, orçamento, ambiente, item/medição, ajustes, PublicProposal
+│        ├─ db/                  # Dexie (IndexedDB): tabelas locais, repositórios
+│        ├─ sync/                # outbox, push/pull, upload de fotos
+│        ├─ features/            # lógica por domínio (quotes, customers, pricing…)
+│        ├─ pdf/                 # geração do PDF da proposta
+│        └─ ui/                  # componentes grandes p/ campo (MeasureInput, BigButton…)
 ├─ packages/
 │  ├─ calc/                      # motor de cálculo – TS puro, sem React/banco
 │  │  ├─ src/
@@ -55,8 +49,8 @@ app-cortinas/
 ├─ supabase/
 │  ├─ migrations/                # schema + RLS + funções
 │  └─ seed.sql
-├─ docs/  PLANO.md, decisoes/ (registro curto de decisões)
-├─ .github/workflows/ci.yml
+├─ docs/  PLANO.md
+├─ .github/workflows/ci.yml      # checagens + deploy no GitHub Pages
 ├─ CLAUDE.md
 └─ pnpm-workspace.yaml
 ```
@@ -113,7 +107,7 @@ auth.users ─┐
 
 **quote_events** – `quote_id`, `type`, `payload`, `created_at`. Histórico e auditoria; base para notificações no futuro.
 
-**Somente no aparelho (SQLite):** `outbox` (mutações pendentes: tabela, id, operação, payload, tentativas), `sync_state` (último `server_seq` por tabela), `photo_uploads`.
+**Somente no aparelho (IndexedDB):** `outbox` (mutações pendentes: tabela, id, operação, payload, tentativas), `sync_state` (último `server_seq` por tabela), `photo_uploads`.
 
 ### RLS e acesso público
 
@@ -126,8 +120,8 @@ auth.users ─┐
 1. Toda escrita local grava a linha **e** um registro na `outbox` na mesma transação.
 2. Com internet: envia a outbox em lote (upsert); o servidor aplica "última escrita vence" por linha comparando `updated_at`.
 3. Pull: busca linhas com `server_seq` maior que o último visto, por tabela.
-4. Fotos: fila separada; comprime (`expo-image-manipulator`) e sobe ao Storage.
-5. Gatilhos: ao abrir o app, ao reconectar (NetInfo), após salvar e periodicamente em primeiro plano.
+4. Fotos: fila separada; comprime (redimensiona no navegador antes de enviar) e sobe ao Storage.
+5. Gatilhos: ao abrir o app, ao reconectar (evento `online`), após salvar e periodicamente em primeiro plano.
 
 Conflito real só acontece se a mesma pessoa editar o mesmo orçamento em dois aparelhos offline; "última escrita vence" basta para o MVP.
 
@@ -149,21 +143,18 @@ calculate(input: { product, measurement, config, prices, settings }): CalcResult
 | #   | Etapa                | Entregas                                                                                                                     | Depende de você                                    |
 | --- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
 | 1   | **Plano**            | Este documento + `CLAUDE.md`                                                                                                 | Aprovação                                          |
-| 2   | **Setup**            | git, pnpm workspaces, Expo (Android), Next.js, Supabase, ESLint/Prettier/TS strict, Vitest, CI no GitHub Actions             | Instalar ferramentas (abaixo); conta GitHub        |
+| 2   | **Setup**            | git, pnpm workspaces, PWA (Vite), Supabase, ESLint/Prettier/TS strict, Vitest, CI no GitHub Actions                          | Instalar ferramentas (abaixo); conta GitHub        |
 | 3   | **Motor de cálculo** | Cortina franzida e rolô primeiro, depois prega americana, wave, double vision, horizontal, vertical. Testes conferidos à mão | Respostas às perguntas da seção 6; planilhas reais |
-| 4   | **Dados e sync**     | Migrations + RLS + testes de RLS; SQLite/Drizzle; outbox; upload de fotos                                                    | —                                                  |
+| 4   | **Dados e sync**     | Migrations + RLS + testes de RLS; IndexedDB/Dexie; outbox; upload de fotos                                                   | —                                                  |
 | 5   | **Telas**            | login → lista → novo orçamento → cliente → ambientes → item/medição → resumo                                                 | Feedback de uso                                    |
 | 6   | **Preços e markup**  | CRUD, markup global/categoria/item, importação CSV                                                                           | Exemplo da sua tabela atual                        |
 | 7   | **Proposta**         | PDF no aparelho, página `/p/[token]`, WhatsApp, aceite/recusa, status                                                        | Domínio (opcional)                                 |
-| 8   | **Polimento**        | Onboarding ≤ 5 min, dados de exemplo, erros, build Android (EAS)                                                             | Cortineiros piloto                                 |
+| 8   | **Polimento**        | Onboarding ≤ 5 min, dados de exemplo, erros, teste instalado em celulares Android                                            | Cortineiros piloto                                 |
 
-### Ambiente desta máquina (verificado agora)
+### Ambiente desta máquina
 
-- ✅ Node 24 e npm
-- ❌ **git** – necessário para os commits: instalar Git for Windows.
-- ❌ **pnpm** – resolvo na etapa 2 via `corepack enable`.
-- ❌ **Docker** – o Supabase local precisa dele. Alternativa: usar um **projeto Supabase na nuvem (plano grátis)** só para desenvolvimento, sem Docker.
-- ❌ Supabase CLI – instalo como dependência de desenvolvimento do repositório.
+- ✅ Node 24, git, pnpm
+- Sem Docker: Supabase de desenvolvimento será um **projeto na nuvem (plano grátis)**. CLI via `npx supabase`.
 
 ## 6. Perguntas do ofício (para a etapa 3)
 

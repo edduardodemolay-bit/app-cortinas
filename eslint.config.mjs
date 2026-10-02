@@ -1,23 +1,11 @@
 import js from '@eslint/js';
+import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 import globals from 'globals';
 
 export default tseslint.config(
   {
-    ignores: [
-      // apps/web is linted with its own Next.js config (pnpm --filter @cortinas/web lint)
-      'apps/web/**',
-      '**/node_modules/**',
-      '**/dist/**',
-      '**/coverage/**',
-      '**/.next/**',
-      '**/.expo/**',
-      '**/android/**',
-      '**/ios/**',
-      '**/*.config.js',
-      '**/next-env.d.ts',
-      '**/expo-env.d.ts',
-    ],
+    ignores: ['**/node_modules/**', '**/dist/**', '**/dev-dist/**', '**/coverage/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -28,5 +16,10 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
+  },
+  {
+    files: ['apps/web/**/*.{ts,tsx}'],
+    plugins: { 'react-hooks': reactHooks },
+    rules: reactHooks.configs.recommended.rules,
   },
 );

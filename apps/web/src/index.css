@@ -1,0 +1,25 @@
+@import 'tailwindcss';
+
+/* High-contrast palette and large touch targets for use in the field (sunlight, one hand). */
+@theme {
+  --color-primary: #0b5fff;
+  --color-ink: #111111;
+  --color-muted: #4a4a4a;
+  --color-danger: #c62828;
+}
+
+html {
+  font-size: 18px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: #ffffff;
+  color: var(--color-ink);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+}

@@ -6,22 +6,8 @@ coverage/
 .env.*
 !.env.example
 
-# Expo / React Native
-.expo/
-web-build/
-android/
-ios/
-*.jks
-*.keystore
-*.p8
-*.p12
-*.mobileprovision
-
-# Next.js
-.next/
-out/
-next-env.d.ts
-.vercel
+# Vite PWA (service worker em modo dev)
+dev-dist/
 
 # Supabase
 supabase/.branches
