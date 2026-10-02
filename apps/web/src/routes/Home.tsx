@@ -1,4 +1,5 @@
 import { formatBRL } from '@cortinas/shared';
+import { Link } from 'react-router';
 
 export function Home() {
   return (
@@ -8,11 +9,18 @@ export function Home() {
         <p className="text-xl font-semibold">Nenhum orçamento ainda</p>
         <p className="text-muted">Total em aberto: {formatBRL(0)}</p>
       </section>
+      <Link
+        to="/simular"
+        className="flex min-h-14 items-center justify-center rounded-xl border-2 border-primary text-xl font-bold text-primary active:opacity-80"
+      >
+        Simular um item
+      </Link>
       <button
         type="button"
-        className="min-h-14 rounded-xl bg-primary text-xl font-bold text-white active:opacity-80"
+        disabled
+        className="min-h-14 rounded-xl bg-primary text-xl font-bold text-white opacity-50"
       >
-        Novo orçamento
+        Novo orçamento (em breve)
       </button>
     </main>
   );

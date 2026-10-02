@@ -5,6 +5,7 @@ import { HashRouter, Route, Routes } from 'react-router';
 import './index.css';
 import { Home } from './routes/Home';
 import { PublicProposal } from './routes/PublicProposal';
+import { Simulator } from './routes/Simulator';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Root element not found');
@@ -15,6 +16,7 @@ createRoot(root).render(
     <HashRouter>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/simular" element={<Simulator />} />
         <Route path="/p/:token" element={<PublicProposal />} />
       </Routes>
     </HashRouter>
