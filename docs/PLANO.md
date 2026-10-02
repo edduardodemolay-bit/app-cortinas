@@ -76,7 +76,7 @@ auth.users ─┐
                                                └──< quote_events    (enviado, visualizado, aceito…)
 ```
 
-**companies** – `name`, `logo_path`, `phone`, `cnpj` (opcional), `default_markup_bps`, `calc_settings jsonb` (padrões do ofício por empresa: fator de franzimento, barras, sobras…), `next_quote_number`.
+**companies** – `name`, `logo_path`, `phone`, `cnpj` (opcional), `default_markup_bps`, `calc_settings jsonb` (padrões do ofício por empresa: fator de franzimento, barras, sobras…), `next_quote_number`, `default_terms` (termos e condições), `default_payment_terms`, `default_lead_time_days` (prazo de entrega).
 
 **company_members** – `company_id`, `user_id`, `role` (`owner` por enquanto). Já prepara multiusuário/multiloja. Uma função `create_company_for_user()` roda no cadastro.
 
@@ -90,7 +90,7 @@ auth.users ─┐
 
 **category_markups** – `category`, `markup_bps`. Preço de venda = custo × (1 + markup). Prioridade: item > categoria > global.
 
-**quotes** – `customer_id`, `number` (servidor), `status` (`draft | sent | viewed | accepted | rejected`), `public_token` (aleatório, longo), `valid_until`, `notes`, `accepted_option_id`, `sent_at`, `viewed_at`, `decided_at`, `current_version`.
+**quotes** – `customer_id`, `number` (servidor), `status` (`draft | sent | viewed | accepted | rejected`), `public_token` (aleatório, longo), `valid_until`, `notes`, `accepted_option_id`, `sent_at`, `viewed_at`, `decided_at`, `current_version`, `seller_id` (vendedor), `discount_bps` ou `discount_cents` (desconto geral), `payment_terms` (texto), `delivery_estimate` (previsão de entrega), `terms` (termos e condições, copiados do padrão da empresa).
 
 **quote_options** – `label`, `position`. Duas ou três por orçamento; uma só se não houver comparação.
 
@@ -100,7 +100,8 @@ auth.users ─┐
 
 **item_photos** – `item_id`, `storage_path`, `local_uri` (só no aparelho), `upload_status`.
 
-**item_lines** – o produto proposto para aquele vão **em cada opção**. `item_id`, `option_id`, `product_type`, `config jsonb` (tecido escolhido, fator, tipo de prega, trilho…), `calc_result jsonb` (consumos, preços unitários usados e premissas), `total_cents`, `calc_version`.
+**item_lines** – o produto proposto para aquele vão **em cada opção**. `item_id`, `option_id`, `product_type`, `config jsonb` (tecido escolhido, fator, tipo de prega, trilho…), `calc_result jsonb` (consumos, preços unitários usados e premissas), `subtotal_cents`, `discount_bps` (desconto do item), `total_cents`, `calc_version`.
+`product_type` inclui: `gathered`, `pinch_pleat`, `wave`, `roller`, `double_vision`, `roman`, `panel`, `horizontal_blind`, `vertical_blind`, além de `service` (ex.: kit instalação) e `custom` (item avulso com preço manual).
 → Assim, "Sala / janela 1" pode ter rolô básico na opção Econômica e wave com blackout na Premium.
 
 **quote_versions** – `quote_id`, `version`, `snapshot jsonb` (tudo o que a página pública e o PDF mostram, incluindo nome/logo da empresa e preços), `created_at`.
@@ -171,10 +172,50 @@ Vou usar padrões marcados `// TODO: validar com cortineiro` até você responde
 7. Costura: cobra por metro de tecido, por metro de largura acabada ou por pano? Muda com o tipo de prega?
 8. Instalação: por peça, por metro de trilho ou por visita?
 
-**Trilho/varão** 9. Sobra de trilho além da largura? Venda em barras de tamanho fixo ou por metro cortado? 10. Acessórios por metro (suportes a cada X cm, deslizantes/ganchos por metro, ponteiras, emendas)?
+**Trilho/varão**
 
-**Persianas** 11. Área mínima cobrada (ex.: 1 m² ou 1,5 m²)? Largura mínima? 12. Arredonda largura/altura antes de multiplicar (ex.: para os 10 cm seguintes)? 13. Dentro do vão: desconta alguma folga na largura? 14. Tamanhos máximos por modelo, para alertas?
+9. Sobra de trilho além da largura? Venda em barras de tamanho fixo ou por metro cortado?
+10. Acessórios por metro (suportes a cada X cm, deslizantes/ganchos por metro, ponteiras, emendas)?
 
-**Comercial** 15. Markup é sobre o custo (custo × 1,8) ou margem sobre a venda? 16. Arredonda o preço final (ex.: para o real ou para os 10 reais seguintes)? 17. Validade padrão da proposta (dias)?
+**Persianas**
 
-**Medidas improváveis** (para os alertas) 18. Que faixas considera normais? Proposta: largura 30 cm–8 m, altura 30 cm–5 m.
+11. Área mínima cobrada (ex.: 1 m² ou 1,5 m²)? Largura mínima?
+12. Arredonda largura/altura antes de multiplicar (ex.: para os 10 cm seguintes)?
+13. Dentro do vão: desconta alguma folga na largura?
+14. Tamanhos máximos por modelo, para alertas?
+
+**Comercial**
+
+15. Markup é sobre o custo (custo × 1,8) ou margem sobre a venda?
+16. Arredonda o preço final (ex.: para o real ou para os 10 reais seguintes)?
+17. Validade padrão da proposta (dias)?
+
+**Medidas improváveis** (para os alertas)
+
+18. Que faixas considera normais? Proposta: largura 30 cm–8 m, altura 30 cm–5 m.
+
+## 7. Aprendizados dos orçamentos reais (out/2026)
+
+Fonte: 4 orçamentos reais do usuário (gerados no sistema atual). **Os PDFs não entram no repositório** (dados pessoais de clientes; repositório público). Abaixo, só regras e padrões, anonimizados.
+
+**Produtos que aparecem e não estavam no escopo** → incluir no MVP:
+
+- **Cortina romana** (tecido screen 3% ou blackout, rolo 2,80–3,00 m).
+- **Painel** (painel deslizante) em 3 ou 4 vias.
+- Persiana rolô aparece como "cortina rolô" (tubo R38, bandô PVC).
+- Persiana horizontal 25 mm, lisa ou perfurada.
+
+**Atributos de configuração por item (persianas/rolô/romana/painel):** largura do rolo do tecido, comprimento do comando ("TC", em m), lado do comando (direito/esquerdo), tipo de base (chata, cunha + cor), rolamento (padrão), bandô (ex.: PVC), "mesmo ambiente" (sim/não). Cortina de tecido: tecido, forro (ex.: blackout dupla face), trilho (simples/duplo + cor), fixação (bucha + parafuso), abertura (ex.: "em 2 partes").
+
+**Comercial (faltava no modelo de dados):**
+
+- **Desconto por item** (ex.: 20%) **e desconto geral** no orçamento.
+- **Condições de pagamento** em texto (ex.: "à vista 15% de desconto", "cartão até 5× sem juros").
+- **Previsão de entrega** (no exemplo, 8 a 11 dias após o orçamento).
+- **Termos e condições** padrão da empresa (garantia manual × motorizada, prazos, não cancelamento de sob medida etc.), editáveis em Ajustes.
+- **Vendedor** por orçamento (já previsto via `company_members`).
+- **Kit instalação** como serviço: às vezes por metro, às vezes por unidade.
+
+**Problema do sistema atual que o nosso resolve:** a "opção" alternativa entra como mais uma linha do orçamento e **é somada no subtotal**, junto com a opção principal. Isso confunde o cliente. No nosso modelo, as opções (`quote_options`) são excludentes e o cliente escolhe uma.
+
+**O que os PDFs não mostram (e é necessário para o motor de cálculo):** medidas (largura × altura), metragem de tecido, preço por m² ou por metro e custo. → Pedir ao usuário as medidas de alguns desses itens e a tabela de preços.
