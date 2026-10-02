@@ -13,6 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@cortinas/calc": "workspace:*",
     "zod": "^4.6.5"
   }
 }
